@@ -1,12 +1,5 @@
 package token
 
-//go:generate stringer -type=Type
-type Type uint16
-
-const (
-	Unknown Type = iota
-)
-
 type Token interface {
 	Positioner
 	Lengther

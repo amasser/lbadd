@@ -1,5 +1,12 @@
 package scanner
 
+import (
+	"reflect"
+	"runtime"
+
+	"github.com/tomarrell/lbadd/internal/parser/scanner/token"
+)
+
 // state is a type alias for a function that takes a scanner and returns another
 // state. Such functions (or states) will be invoked by the scanner. It will
 // pass itself as the argument, and the returned state will be chained and
@@ -12,22 +19,39 @@ type Scanner struct {
 	pos   int
 
 	current state
+	stream  *token.Stream
 
 	line, lastCol, col int
 }
 
-func New(input []rune) *Scanner {
+func New(input []rune, stream *token.Stream) *Scanner {
 	return &Scanner{
 		input: input,
 		start: 0,
 		pos:   0,
 
 		current: initial,
+		stream:  stream,
 
 		line:    1, // line starts at 1, because it should be human readable and editor line and column numbers usually start at 1
 		lastCol: 1,
 		col:     1, // col starts at 1, because it should be human readable and editor line and column numbers usually start at 1
 	}
+}
+
+func (s *Scanner) Scan() {
+	for !s.done() {
+		nextState := s.current(s)
+		if nextState == nil {
+			panic("state '" + runtime.FuncForPC(reflect.ValueOf(s.current).Pointer()).Name() + "' evaluated to nil")
+		}
+		s.current = nextState
+	}
+	s.emit(token.EOF)
+}
+
+func (s *Scanner) done() bool {
+	return s.pos >= len(s.input)
 }
 
 func (s *Scanner) next() rune {
@@ -55,6 +79,11 @@ func (s *Scanner) goback() {
 	} else {
 		s.col--
 	}
+}
+
+func (s *Scanner) emit(t token.Type) {
+	tok := token.New(s.line, s.col, s.start, s.pos-s.start, t, string(s.input[s.start:s.pos]))
+	s.stream.Push(tok)
 }
 
 type matcher interface {
