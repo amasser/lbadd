@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"runtime"
 
+	"github.com/tomarrell/lbadd/internal/parser/scanner/matcher"
 	"github.com/tomarrell/lbadd/internal/parser/scanner/token"
 )
 
@@ -86,14 +87,20 @@ func (s *Scanner) emit(t token.Type) {
 	s.stream.Push(tok)
 }
 
-type matcher interface {
-	Matches(rune) bool
-}
-
-func (s *Scanner) accept(m matcher) bool {
+func (s *Scanner) accept(m matcher.M) bool {
 	if m.Matches(s.next()) {
 		return true
 	}
 	s.goback()
 	return false
+}
+func (s *Scanner) acceptSequence(seq string) bool {
+	checkpoint := s.pos
+	for _, r := range seq {
+		if r != s.next() {
+			s.pos = checkpoint
+			return false
+		}
+	}
+	return true
 }
